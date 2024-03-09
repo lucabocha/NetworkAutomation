@@ -1,3 +1,7 @@
+# How to Build my Eve NG Lab in GGC (Gooogle Cloud)
+
+
+
 gcloud compute images create nested-ubuntu-focal --source-image-family=ubuntu-2004-lts --source-image-project=ubuntu-os-cloud --licenses https://www.googleapis.com/compute/v1/projects/vm-options/global/licenses/enable-vmx
 
 lucabocha@cloudshell:~ (my-eve-ng-network-lab)$ gcloud compute images create nested-ubuntu-focal --source-image-family=ubuntu-2004-lts --source-image-project=ubuntu-os-cloud --licenses https://www.googleapis.com/compute/v1/projects/vm-options/global/licenses/enable-vmx
