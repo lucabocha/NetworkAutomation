@@ -7,3 +7,30 @@ PROJECT: my-eve-ng-network-lab
 FAMILY: 
 DEPRECATED: 
 STATUS: READY
+
+
+
+/etc/network/interfaces
+pnet1: 
+
+iface pnet1 inet static
+    bridge_ports eth1
+    bridge_stp off
+    address 10.255.255.1
+    network 255.255.255.0
+
+/etc/sysctl.conf 
+
+    net.ipv4.ip_forward=1
+
+sysctl -p /etc/sysctl.conf 
+
+apt install iptables-persistent
+
+iptables-save > /etc/iptables/rules.v4 
+
+
+VSRX ip to Cloud 9 10.255.255.10/24 
+
+
+iptables -t nat -A PREROUTING -p tcp --dport 8000:9000 -i pnet0 -j DNAT --to-destination 10.255.255.10
