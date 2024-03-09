@@ -1,6 +1,11 @@
 # How to Build my Eve NG Lab in GGC (Gooogle Cloud)
 
+The initial set up of the Eve NG virtual machine in google cloud was done following the instructions on this [link](https://www.eve-ng.net/index.php/documentation/community-cookbook/). More specficailly starting from Page 40
 
+Either way, Im going to outline the instructions specifically related to the deployment of the VM 
+
+1. Deploy the VM in your Google Cloud:
+    - test
 
 gcloud compute images create nested-ubuntu-focal --source-image-family=ubuntu-2004-lts --source-image-project=ubuntu-os-cloud --licenses https://www.googleapis.com/compute/v1/projects/vm-options/global/licenses/enable-vmx
 
