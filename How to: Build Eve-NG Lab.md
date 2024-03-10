@@ -85,7 +85,7 @@ With this much information we will be able to understand the below steps better.
         sudo su 
         vim /etc/network/interfaces
 
-   This will open the VIM editor so you configure the interface like below. In my case I know that I wont be using 10.255.255.0/24 IPs anywhere else on the labs 
+   This will open the VIM editor so you configure the interface like below. In my case I know that I wont be using 10.255.255.0/24 IP range anywhere else on the labs 
    
         iface pnet1 inet static
             bridge_ports eth1
@@ -93,7 +93,7 @@ With this much information we will be able to understand the below steps better.
             address 10.255.255.1
             network 255.255.255.0
 
-2. Enabled the IP forwarding in the EVE NG VM so it can start routing traffic 
+2. Enabled the IP forwarding in the EVE NG VM so it can start routing traffic from the internal labs to the internet
 
         sudo su
         vim /etc/sysctl.conf 
@@ -102,26 +102,30 @@ With this much information we will be able to understand the below steps better.
 
         net.ipv4.ip_forward=1
   
-  - Reload this configuration
+  - Reload this configuration so the changes made can be applied
 
         sysctl -p /etc/sysctl.conf 
 
-3. Install the iptables-persistent package:
+3. Install the iptables-persistent package, so we can then later save the ip table configuration if everything works as expected:
 
         sudo su 
         apt install iptables-persistent
 
-4. Execute the following command, please change the IP addresses on it to match your configuration. Im pasting the command I used on my set up
+4. Execute the following command in order to start natting the internal IPs (pnet1) to the internet. Have in mind that you will have to change the IP addresses on the command in order to match the ip address range previusly configured for pnet1. Here, Im pasting the command I used on my set up since I configured the ip 10.255.255.1/24 on pnet1 
 
         iptables -t nat -A POSTROUTING -s 10.255.255.0/24 -o pnet0 -j MASQUERADE 
 
-5. Confirm that the internet connectivity works. You can do it by setting up something like this and pinging from the device to the internet. Make shre that the IP addresses is configured correctly on the device (It needs to be in the same range as previously applied on pnet1) and also the routing is correctly set up. 
+This command will basically receive traffic from 10.255.255.0/24 and then nat it out to pnet0, which is the interface that has connectivity to the internet
+
+5. Confirm that the internet connectivity works. You can do it by setting up something like this and pinging from the device to the internet. Make sure that the IP addresses is configured correctly on the device (It needs to be in the same range as previously applied on pnet1) and also the routing is correctly set up. 
 
   <div align="center" dir="auto">
     
 ![Eve NG Lab Set up ](https://github.com/lucabocha/NetworkAutomation/assets/44237986/b3c81e56-05d0-43e8-969c-4e0603bae9ed)
 
   </div>
+
+A simple ping to 8.8.8.8 from the test device should confirm or not if the internet connectivity is working 
 
 5. Finally (If everything is working correctly), save the IP tables configuration so it can survive reboots 
 
@@ -131,7 +135,16 @@ If you need to give internet connectivity to any other device simply connect it 
 
 ## How to connect from your home network or from the internet to the Lab Device in Eve NG
 
+The goal here is to initiate an ssh session from your local computer and that it connects to the lab device in Eve NG. 
 
+For this we are going to make use two destination nats: One is going to be configured on the Eve NG virtual machine using ip tables and the other is configured on a firewall device (In my case it is an vSRX) so the connectivity should work this way: 
+
+- You computer is going to initiate an ssh session to the public IP of the Eve NG machine on tcp port 8001
+- This arrives at the Eve NG machine which is going to translate the destination IP to 10.255.255.10 and going to keep the same destination port 8001
+- This is going to arrive to the lab firewall (vSRX) and this is going to translate the destination IP and destination port to 10.255.254.11 destination port 22 and forward this packet to 10.255.254.11
+- The packet will be received on this host which is listening on port 22 (ssh) and then the connection is going to be established
+
+1. 
 
 
 
