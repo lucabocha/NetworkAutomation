@@ -1,12 +1,17 @@
 # How to Build my Eve NG Lab in GGC (Gooogle Cloud)
 
-The initial set up of the Eve NG virtual machine in google cloud was done following the instructions on this [link](https://www.eve-ng.net/index.php/documentation/community-cookbook/). More specficailly starting from Page 40
+The initial set up of the Eve NG virtual machine in google cloud was done following the instructions on this [link](https://www.eve-ng.net/index.php/documentation/community-cookbook/). More specficailly starting from page 40
 
-Either way, Im going to outline the instructions specifically related to the deployment of the VM 
+Either way, Im going to outline the instructions specifically related to the deployment of the VM and not the creation of the google account or anything of the sort
 
-1. Deploy the VM in your Google Cloud:
-    - test
+1. Open the Google Cloud Shell :
+  <div align="center" dir="auto">
 
+![GCC_Shell](https://github.com/lucabocha/NetworkAutomation/assets/44237986/df380329-ce0a-4b6b-a4ac-a536af1981b3)
+
+  </div>
+
+this jouijnarvoinarwovnoauindw  
 gcloud compute images create nested-ubuntu-focal --source-image-family=ubuntu-2004-lts --source-image-project=ubuntu-os-cloud --licenses https://www.googleapis.com/compute/v1/projects/vm-options/global/licenses/enable-vmx
 
 lucabocha@cloudshell:~ (my-eve-ng-network-lab)$ gcloud compute images create nested-ubuntu-focal --source-image-family=ubuntu-2004-lts --source-image-project=ubuntu-os-cloud --licenses https://www.googleapis.com/compute/v1/projects/vm-options/global/licenses/enable-vmx
