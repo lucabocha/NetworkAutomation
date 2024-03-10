@@ -4,44 +4,135 @@ The initial set up of the Eve NG virtual machine in google cloud was done follow
 
 Either way, Im going to outline the instructions specifically related to the deployment of the VM and not the creation of the google account or anything of the sort
 
+## Create the Virtual Machine 
+
 1. Open the Google Cloud Shell :
+
   <div align="center" dir="auto">
 
 ![GCC_Shell](https://github.com/lucabocha/NetworkAutomation/assets/44237986/df380329-ce0a-4b6b-a4ac-a536af1981b3)
 
   </div>
 
-this jouijnarvoinarwovnoauindw  
-gcloud compute images create nested-ubuntu-focal --source-image-family=ubuntu-2004-lts --source-image-project=ubuntu-os-cloud --licenses https://www.googleapis.com/compute/v1/projects/vm-options/global/licenses/enable-vmx
+2. Execute the following command in the Google Cloud Shell:
 
-lucabocha@cloudshell:~ (my-eve-ng-network-lab)$ gcloud compute images create nested-ubuntu-focal --source-image-family=ubuntu-2004-lts --source-image-project=ubuntu-os-cloud --licenses https://www.googleapis.com/compute/v1/projects/vm-options/global/licenses/enable-vmx
-Created [https://www.googleapis.com/compute/v1/projects/my-eve-ng-network-lab/global/images/nested-ubuntu-focal].
-NAME: nested-ubuntu-focal
-PROJECT: my-eve-ng-network-lab
-FAMILY: 
-DEPRECATED: 
-STATUS: READY
+        gcloud compute images create nested-ubuntu-focal --source-image-family=ubuntu-2004-lts --source-image-project=ubuntu-os-cloud --licenses https://www.googleapis.com/compute/v1/projects/vm-options/global/licenses/enable-vmx
+
+This will create the image we are going to use when deploying the Virtual Machine in Google Cloud. When the command is completed you should get the following output:  
+
+    username@cloudshell:~ (my-eve-ng-network-lab)$ gcloud compute images create nested-ubuntu-focal --source-image-family=ubuntu-2004-lts --source-image-project=ubuntu-os-cloud --licenses https://www.googleapis.com/compute/v1/projects/vm-options/global/licenses/enable-vmx
+    Created [https://www.googleapis.com/compute/v1/projects/my-eve-ng-network-lab/global/images/nested-ubuntu-focal].
+    NAME: nested-ubuntu-focal
+    PROJECT: my-eve-ng-network-lab
+    FAMILY: 
+    DEPRECATED: 
+    STATUS: READY
+
+3. Create the VM using the Google Cloud Console
+  - Go to "Compute Engine" > "VM Instances" > "Create Instance"
+
+  <div align="center" dir="auto">
+    
+![GCC VM Instances](https://github.com/lucabocha/NetworkAutomation/assets/44237986/c2cb7b5b-8cea-49d2-b563-a7ba7d4691c0)
+
+![Create Instance GCC](https://github.com/lucabocha/NetworkAutomation/assets/44237986/1042da87-a80b-441c-a8d4-e869b2c03595)
+
+  </div>
+
+  - Assign the name for the VM
+  - Set your Region and zone
+  - Edit your machine configuraion. General Purpose. Choose the series of CPU platform to be Intel CPUs Skylake or Cascade. (In my case I picke the following machine type: **n2-standard-8** )
+  - Chose your CPU and RAM settings and make sure that the option "Deploy a container image is unchecked or simply is not enabled"
+  - Select the image previously created
+  - Allow HTTP traffic and create the VM 
+
+For this third point you can reference the guide on this [link](https://www.eve-ng.net/index.php/documentation/community-cookbook/) on page 43 & 44 which contain an example of tha VM machine deployment
+
+## EVE-NG Installation 
+
+1. For this installation you can follow the instructions on this [link](https://www.eve-ng.net/index.php/documentation/community-cookbook/) on pages 45 & 46. Im not explaining this since it is very well explained on this guide so it will be repeatetive to outline all the steps on this guide too 
+
+## How to Connect to Even NG Lab devices to the Internet
+
+First, lets clarify some basics about the eve ng machine network interfaces
+
+- The pnet0 interface maps to the main interface for this VM. This is the interface that interacts directly to the google cloud network
+- THe other pnet interfaces from 1 to 9 will each of them be related to the cloud networks available in the eve NG Lab. For example:
+
+      root@myevenglab:~# ifconfig | grep pnet
+      pnet0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1460
+      pnet1: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+      pnet2: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+      pnet3: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+      pnet4: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+      pnet5: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+      pnet6: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+      pnet7: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+      pnet8: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+      pnet9: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+
+<div align="center" dir="auto">
+
+
+![EvenNGClouds](https://github.com/lucabocha/NetworkAutomation/assets/44237986/c611df66-6e0c-4113-b0d4-75930eab0fd4)
+
+</div>
+
+With this much information we will be able to understand the below steps better. So, lets start setting up the internet access for the lab devices 
+
+1. Edit the pnet1 interface configuration to give it an IP address. This IP address should be an IP that we will not use on any of the lab we will be setting up 
+
+        sudo su 
+        vim /etc/network/interfaces
+
+   This will open the VIM editor so you configure the interface like below. In my case I know that I wont be using 10.255.255.0/24 IPs anywhere else on the labs 
+   
+        iface pnet1 inet static
+            bridge_ports eth1
+            bridge_stp off
+            address 10.255.255.1
+            network 255.255.255.0
+
+2. Enabled the IP forwarding in the EVE NG VM so it can start routing traffic 
+
+        sudo su
+        vim /etc/sysctl.conf 
+
+  - Find the following line in this file and uncomment it (Remove the "#" at the beginning)
+
+        net.ipv4.ip_forward=1
+  
+  - Reload this configuration
+
+        sysctl -p /etc/sysctl.conf 
+
+3. Install the iptables-persistent package:
+
+        sudo su 
+        apt install iptables-persistent
+
+4. Execute the following command, please change the IP addresses on it to match your configuration. Im pasting the command I used on my set up
+
+        iptables -t nat -A POSTROUTING -s 10.255.255.0/24 -o pnet0 -j MASQUERADE 
+
+5. Confirm that the internet connectivity works. You can do it by setting up something like this and pinging from the device to the internet. Make shre that the IP addresses is configured correctly on the device (It needs to be in the same range as previously applied on pnet1) and also the routing is correctly set up. 
+
+  <div align="center" dir="auto">
+    
+![Eve NG Lab Set up ](https://github.com/lucabocha/NetworkAutomation/assets/44237986/b3c81e56-05d0-43e8-969c-4e0603bae9ed)
+
+  </div>
+
+5. Finally (If everything is working correctly), save the IP tables configuration so it can survive reboots 
+
+        iptables-save > /etc/iptables/rules.v4 
+
+If you need to give internet connectivity to any other device simply connect it to the cloud1, with an IP in the range of 10.255.255.0/24 that is not repeated anywhere else and the internet connectivity should work. 
+
+## How to connect from your home network or from the internet to the Lab Device in Eve NG
 
 
 
-/etc/network/interfaces
-pnet1: 
-
-iface pnet1 inet static
-    bridge_ports eth1
-    bridge_stp off
-    address 10.255.255.1
-    network 255.255.255.0
-
-/etc/sysctl.conf 
-
-    net.ipv4.ip_forward=1
-
-sysctl -p /etc/sysctl.conf 
-
-apt install iptables-persistent
-
-iptables-save > /etc/iptables/rules.v4 
 
 
 VSRX ip to Cloud 9 10.255.255.10/24 
