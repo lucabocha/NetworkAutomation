@@ -144,62 +144,94 @@ For this we are going to make use two destination nats: One is going to be confi
 - This is going to arrive to the lab firewall (vSRX) and this is going to translate the destination IP and destination port to 10.255.254.11 destination port 22 and forward this packet to 10.255.254.11
 - The packet will be received on this host which is listening on port 22 (ssh) and then the connection is going to be established
 
-1. 
+This is the diagram for the test setup: 
 
+  <div align="center" dir="auto">
 
+![EveNGSetup2](https://github.com/lucabocha/NetworkAutomation/assets/44237986/89dceeea-20a5-41f6-9b1f-6ee0330ab623)
 
-VSRX ip to Cloud 9 10.255.255.10/24 
+  </div>
 
+1. Set up the 1st destination nat on the Eve NG Virtual Machine:
+   - Issue the following command to create the destination nat on the iptables. Make sure to change the IP address inforamtion as needed 
 
-iptables -t nat -A PREROUTING -p tcp --dport 8000:9000 -i pnet0 -j DNAT --to-destination 10.255.255.10
+          iptables -t nat -A PREROUTING -p tcp --dport 8000:9000 -i pnet0 -j DNAT --to-destination 10.255.255.10
 
+This command is going to match traffic arriving on pnet0 with a destination port between 8000 and 9000 and then change the destination IP address to 10.255.255.10 
 
-set version 12.1X46-D30.2
-set system host-name vSRX-MGMT-Firewall
-set system root-authentication encrypted-password "$1$Kvb73fFf$pvZBxJ5Qxftf8yHvaQ0Lh."
-set system services ssh
-set system services web-management http interface ge-0/0/0.0
-set system syslog file messages any any
-set system license autoupdate url https://ae1.juniper.net/junos/key_retrieval
-set interfaces ge-0/0/0 unit 0 family inet filter input test
-set interfaces ge-0/0/0 unit 0 family inet address 10.255.255.10/24
-set interfaces ge-0/0/1 unit 0 family inet address 10.255.254.1/24
-set routing-options static route 0.0.0.0/0 next-hop 10.255.255.1
-set security screen ids-option untrust-screen icmp ping-death
-set security screen ids-option untrust-screen ip source-route-option
-set security screen ids-option untrust-screen ip tear-drop
-set security screen ids-option untrust-screen tcp syn-flood alarm-threshold 1024
-set security screen ids-option untrust-screen tcp syn-flood attack-threshold 200
-set security screen ids-option untrust-screen tcp syn-flood source-threshold 1024
-set security screen ids-option untrust-screen tcp syn-flood destination-threshold 2048
-set security screen ids-option untrust-screen tcp syn-flood queue-size 2000
-set security screen ids-option untrust-screen tcp syn-flood timeout 20
-set security screen ids-option untrust-screen tcp land
-set security nat destination pool mgmt-ip-1 address 10.255.254.11/32
-set security nat destination pool mgmt-ip-1 address port 22
-set security nat destination pool mgmt-ip-2 address 10.255.254.2/32
-set security nat destination pool mgmt-ip-2 address port 22
-set security nat destination rule-set mgmt-devices from interface ge-0/0/0.0
-set security nat destination rule-set mgmt-devices rule device-1 match destination-address 10.255.255.10/32
-set security nat destination rule-set mgmt-devices rule device-1 match destination-port 8001
-set security nat destination rule-set mgmt-devices rule device-1 match protocol tcp
-set security nat destination rule-set mgmt-devices rule device-1 then destination-nat pool mgmt-ip-1
-set security policies from-zone OUTSIDE to-zone DMZ policy default-permit match source-address any
-set security policies from-zone OUTSIDE to-zone DMZ policy default-permit match destination-address any
-set security policies from-zone OUTSIDE to-zone DMZ policy default-permit match application any
-set security policies from-zone OUTSIDE to-zone DMZ policy default-permit then permit
-set security policies from-zone OUTSIDE to-zone OUTSIDE policy default-permit match source-address any
-set security policies from-zone OUTSIDE to-zone OUTSIDE policy default-permit match destination-address any
-set security policies from-zone OUTSIDE to-zone OUTSIDE policy default-permit match application any
-set security policies from-zone OUTSIDE to-zone OUTSIDE policy default-permit then permit
-set security policies from-zone DMZ to-zone OUTSIDE policy default-permit match source-address any
-set security policies from-zone DMZ to-zone OUTSIDE policy default-permit match destination-address any
-set security policies from-zone DMZ to-zone OUTSIDE policy default-permit match application any
-set security policies from-zone DMZ to-zone OUTSIDE policy default-permit then permit
-set security zones security-zone OUTSIDE interfaces ge-0/0/0.0
-set security zones security-zone DMZ interfaces ge-0/0/1.0
-set firewall family inet filter test term 1 from protocol tcp
-set firewall family inet filter test term 1 from destination-port 8001
-set firewall family inet filter test term 1 then log
-set firewall family inet filter test term 1 then accept
-set firewall family inet filter test term 2 then accept
+2. Configure the 2nd destination nat on the firewall (vsrx):
+   
+        set security nat destination pool mgmt-ip-1 address 10.255.254.11/32
+        set security nat destination pool mgmt-ip-1 address port 22
+        set security nat destination pool mgmt-ip-2 address 10.255.254.12/32
+        set security nat destination pool mgmt-ip-2 address port 22
+        set security nat destination rule-set mgmt-devices from interface ge-0/0/0.0
+        set security nat destination rule-set mgmt-devices rule device-1 match destination-address 10.255.255.10/32
+        set security nat destination rule-set mgmt-devices rule device-1 match destination-port 8001
+        set security nat destination rule-set mgmt-devices rule device-1 match protocol tcp
+        set security nat destination rule-set mgmt-devices rule device-1 then destination-nat pool mgmt-ip-1
+        set security nat destination rule-set mgmt-devices rule device-2 match destination-address 10.255.255.10/32
+        set security nat destination rule-set mgmt-devices rule device-2 match destination-port 8002
+        set security nat destination rule-set mgmt-devices rule device-2 match protocol tcp
+        set security nat destination rule-set mgmt-devices rule device-2 then destination-nat pool mgmt-ip-2
+
+Here you can see the mapping that the destination nat creates: 
+
+10.255.255.10:8001 - > Translate to - > 10.255.254.11:22 
+10.255.255.10:8002 - > Translate to - > 10.255.254.12:22 
+
+Just like this you can create multiple other rule to map to other devices if needed 
+
+You can refer to the following [link](https://www.juniper.net/documentation/us/en/software/junos/nat/topics/topic-map/security-nat-destination.html) for more details about destination nat for Juniper SRX devices
+
+With this you should be able to ssh to the Eve NG public IP address on port 8001 and connect to the Test_Device1 management via SSH from your computer 
+
+Please see below the whole configuration of the Mgmt-Firewall device: 
+
+      set interfaces ge-0/0/0 unit 0 family inet filter input test
+      set interfaces ge-0/0/0 unit 0 family inet address 10.255.255.10/24
+      set interfaces ge-0/0/1 unit 0 family inet address 10.255.254.1/24
+      set routing-options static route 0.0.0.0/0 next-hop 10.255.255.1
+      set security screen ids-option untrust-screen icmp ping-death
+      set security screen ids-option untrust-screen ip source-route-option
+      set security screen ids-option untrust-screen ip tear-drop
+      set security screen ids-option untrust-screen tcp syn-flood alarm-threshold 1024
+      set security screen ids-option untrust-screen tcp syn-flood attack-threshold 200
+      set security screen ids-option untrust-screen tcp syn-flood source-threshold 1024
+      set security screen ids-option untrust-screen tcp syn-flood destination-threshold 2048
+      set security screen ids-option untrust-screen tcp syn-flood queue-size 2000
+      set security screen ids-option untrust-screen tcp syn-flood timeout 20
+      set security screen ids-option untrust-screen tcp land
+      set security nat destination pool mgmt-ip-1 address 10.255.254.11/32
+      set security nat destination pool mgmt-ip-1 address port 22
+      set security nat destination pool mgmt-ip-2 address 10.255.254.12/32
+      set security nat destination pool mgmt-ip-2 address port 22
+      set security nat destination rule-set mgmt-devices from interface ge-0/0/0.0
+      set security nat destination rule-set mgmt-devices rule device-1 match destination-address 10.255.255.10/32
+      set security nat destination rule-set mgmt-devices rule device-1 match destination-port 8001
+      set security nat destination rule-set mgmt-devices rule device-1 match protocol tcp
+      set security nat destination rule-set mgmt-devices rule device-1 then destination-nat pool mgmt-ip-1
+      set security nat destination rule-set mgmt-devices rule device-2 match destination-address 10.255.255.10/32
+      set security nat destination rule-set mgmt-devices rule device-2 match destination-port 8002
+      set security nat destination rule-set mgmt-devices rule device-2 match protocol tcp
+      set security nat destination rule-set mgmt-devices rule device-2 then destination-nat pool mgmt-ip-2
+      set security policies from-zone OUTSIDE to-zone DMZ policy default-permit match source-address any
+      set security policies from-zone OUTSIDE to-zone DMZ policy default-permit match destination-address any
+      set security policies from-zone OUTSIDE to-zone DMZ policy default-permit match application any
+      set security policies from-zone OUTSIDE to-zone DMZ policy default-permit then permit
+      set security policies from-zone OUTSIDE to-zone OUTSIDE policy default-permit match source-address any
+      set security policies from-zone OUTSIDE to-zone OUTSIDE policy default-permit match destination-address any
+      set security policies from-zone OUTSIDE to-zone OUTSIDE policy default-permit match application any
+      set security policies from-zone OUTSIDE to-zone OUTSIDE policy default-permit then permit
+      set security policies from-zone DMZ to-zone OUTSIDE policy default-permit match source-address any
+      set security policies from-zone DMZ to-zone OUTSIDE policy default-permit match destination-address any
+      set security policies from-zone DMZ to-zone OUTSIDE policy default-permit match application any
+      set security policies from-zone DMZ to-zone OUTSIDE policy default-permit then permit
+      set security zones security-zone OUTSIDE interfaces ge-0/0/0.0
+      set security zones security-zone DMZ interfaces ge-0/0/1.0
+      set firewall family inet filter test term 1 from protocol tcp
+      set firewall family inet filter test term 1 from destination-port 8001
+      set firewall family inet filter test term 1 then log
+      set firewall family inet filter test term 1 then accept
+      set firewall family inet filter test term 2 then accept
+
