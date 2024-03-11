@@ -1,6 +1,6 @@
 # How to Build my Eve NG Lab in GGC (Gooogle Cloud)
 
-The initial set up of the Eve NG virtual machine in google cloud was done following the instructions on this [link](https://www.eve-ng.net/index.php/documentation/community-cookbook/). More specficailly starting from page 40
+The initial set up of the Eve NG virtual machine in google cloud is done following the instructions on this [link](https://www.eve-ng.net/index.php/documentation/community-cookbook/). More specficailly starting from page 40
 
 Either way, Im going to outline the instructions specifically related to the deployment of the VM and not the creation of the google account or anything of the sort
 
@@ -42,22 +42,22 @@ This will create the image we are going to use when deploying the Virtual Machin
   - Assign the name for the VM
   - Set your Region and zone
   - Edit your machine configuraion. General Purpose. Choose the series of CPU platform to be Intel CPUs Skylake or Cascade. (In my case I picke the following machine type: **n2-standard-8** )
-  - Chose your CPU and RAM settings and make sure that the option "Deploy a container image is unchecked or simply is not enabled"
+  - Chose your CPU and RAM settings and make sure that the option "Deploy a container image" is unchecked or simply is not enabled
   - Select the image previously created
   - Allow HTTP traffic and create the VM 
 
-For this third point you can reference the guide on this [link](https://www.eve-ng.net/index.php/documentation/community-cookbook/) on page 43 & 44 which contain an example of tha VM machine deployment
+For this third point you can reference this [guide](https://www.eve-ng.net/index.php/documentation/community-cookbook/) on page 43 & 44 which contain an example of the VM machine deployment
 
 ## EVE-NG Installation 
 
-1. For this installation you can follow the instructions on this [link](https://www.eve-ng.net/index.php/documentation/community-cookbook/) on pages 45 & 46. Im not explaining this since it is very well explained on this guide so it will be repeatetive to outline all the steps on this guide too 
+1. For this installation you can follow the instructions on this [link](https://www.eve-ng.net/index.php/documentation/community-cookbook/) on pages 45 & 46. Im not explaining this since it is very well explained on this guide so it will be repeatetive to outline all the steps on this how-to guide too. 
 
-## How to Connect to Even NG Lab devices to the Internet
+## How to Connect Eve NG Lab devices to the Internet
 
-First, lets clarify some basics about the eve ng machine network interfaces
+First, lets clarify some basics about the Eve NG machine network interfaces
 
 - The pnet0 interface maps to the main interface for this VM. This is the interface that interacts directly to the google cloud network
-- THe other pnet interfaces from 1 to 9 will each of them be related to the cloud networks available in the eve NG Lab. For example:
+- THe other pnet interfaces from 1 to 9 will map to the cloud networks available in the eve NG Lab. For example:
 
       root@myevenglab:~# ifconfig | grep pnet
       pnet0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1460
@@ -73,19 +73,18 @@ First, lets clarify some basics about the eve ng machine network interfaces
 
 <div align="center" dir="auto">
 
-
 ![EvenNGClouds](https://github.com/lucabocha/NetworkAutomation/assets/44237986/c611df66-6e0c-4113-b0d4-75930eab0fd4)
 
 </div>
 
-With this much information we will be able to understand the below steps better. So, lets start setting up the internet access for the lab devices 
+With this much information we should be able to understand the below steps better. So, lets start setting up the internet access for the lab devices 
 
-1. Edit the pnet1 interface configuration to give it an IP address. This IP address should be an IP that we will not use on any of the lab we will be setting up 
+1. Edit the pnet1 interface configuration to give it a static IP address. This IP address should be an IP that we will not be used on any of the labs we will be setting up 
 
         sudo su 
         vim /etc/network/interfaces
 
-   This will open the VIM editor so you configure the interface like below. In my case I know that I wont be using 10.255.255.0/24 IP range anywhere else on the labs 
+   The above commands will open the VIM editor with sudo access so you configure the interface settings as below: 
    
         iface pnet1 inet static
             bridge_ports eth1
@@ -93,7 +92,13 @@ With this much information we will be able to understand the below steps better.
             address 10.255.255.1
             network 255.255.255.0
 
-2. Enabled the IP forwarding in the EVE NG VM so it can start routing traffic from the internal labs to the internet
+In my case I know that I wont be using the 10.255.255.0/24 IP range anywhere else on the labs. Which is why I gave this pnet1 interface the IP address 10.255.255.1
+
+Also, restart the networking daemon to apply the changes
+
+    systemctl restart networking
+            
+2. Enable IP forwarding in the EVE NG VM so it can start routing traffic from the internal labs to the internet
 
         sudo su
         vim /etc/sysctl.conf 
@@ -102,7 +107,7 @@ With this much information we will be able to understand the below steps better.
 
         net.ipv4.ip_forward=1
   
-  - Reload this configuration so the changes made can be applied
+  - Reload the configuration so the changes made can be applied
 
         sysctl -p /etc/sysctl.conf 
 
@@ -111,13 +116,13 @@ With this much information we will be able to understand the below steps better.
         sudo su 
         apt install iptables-persistent
 
-4. Execute the following command in order to start natting the internal IPs (pnet1) to the internet. Have in mind that you will have to change the IP addresses on the command in order to match the ip address range previusly configured for pnet1. Here, Im pasting the command I used on my set up since I configured the ip 10.255.255.1/24 on pnet1 
+4. Execute the following command in order to start natting the internal IPs (reachable via pnet1) to the internet. Have in mind that you will have to change the IP addresses on the command to match the ip address range previusly configured for pnet1. Here, Im pasting the command I used on my set up since I configured the ip 10.255.255.1/24 on pnet1 
 
         iptables -t nat -A POSTROUTING -s 10.255.255.0/24 -o pnet0 -j MASQUERADE 
 
-This command will basically receive traffic from 10.255.255.0/24 and then nat it out to pnet0, which is the interface that has connectivity to the internet
+This command will make the Eve NG VM receive traffic from any IP in the 10.255.255.0/24 range and then nat it out to pnet0, which is the interface that has connectivity to the internet
 
-5. Confirm that the internet connectivity works. You can do it by setting up something like this and pinging from the device to the internet. Make sure that the IP addresses is configured correctly on the device (It needs to be in the same range as previously applied on pnet1) and also the routing is correctly set up. 
+5. Confirm that the internet connectivity works. You can do it by setting up something like this and pinging from the device to the internet. Make sure that the IP addresses are configured correctly on the device (It needs to be in the same range as previously applied on pnet1) and also the routing is correctly set up. 
 
   <div align="center" dir="auto">
     
@@ -131,18 +136,18 @@ A simple ping to 8.8.8.8 from the test device should confirm or not if the inter
 
         iptables-save > /etc/iptables/rules.v4 
 
-If you need to give internet connectivity to any other device simply connect it to the cloud1, with an IP in the range of 10.255.255.0/24 that is not repeated anywhere else and the internet connectivity should work. 
+If you need to give internet connectivity to any other device simply connect it to the cloud1, configure it with an IP in the range of 10.255.255.0/24 that is not repeated anywhere else also make sure that the routing is correctly configure on that device so its gateway is the pnet1 IP address, and the internet connectivity should work. 
 
 ## How to connect from your home network or from the internet to the Lab Device in Eve NG
 
-The goal here is to initiate an ssh session from your local computer and that it connects to the lab device in Eve NG. 
+The goal here is to initiate an ssh session from your local computer which will connect to the lab device in Eve NG. 
 
-For this we are going to make use two destination nats: One is going to be configured on the Eve NG virtual machine using ip tables and the other is configured on a firewall device (In my case it is an vSRX) so the connectivity should work this way: 
+For this we are going to make use of two destination nats: One is going to be configured on the Eve NG virtual machine using ip tables and the other is going to be configured on a firewall device (In my case it is an vSRX). In the end the connectivity should work this way, when trying to connect to Test_Device1: 
 
 - You computer is going to initiate an ssh session to the public IP of the Eve NG machine on tcp port 8001
-- This arrives at the Eve NG machine which is going to translate the destination IP to 10.255.255.10 and going to keep the same destination port 8001
-- This is going to arrive to the lab firewall (vSRX) and this is going to translate the destination IP and destination port to 10.255.254.11 destination port 22 and forward this packet to 10.255.254.11
-- The packet will be received on this host which is listening on port 22 (ssh) and then the connection is going to be established
+- This packet or communication will arrive at the Eve NG machine which is going to translate the destination IP to 10.255.255.10 and keeping the same destination port number (8001) and forward this packet to the Mgmt-Firewall --- > 1st Destination Nat
+- Once it gets to the Mgmt-Firewall (vSRX), it will translate the destination IP and destination port to 10.255.254.11 destination port 22 and forward this packet to 10.255.254.11 (Test_Device1). ---- > 2nd Destination Nat
+- The packet will be received on this device which is listening on port 22 (ssh) and then the connection is going to be established
 
 This is the diagram for the test setup: 
 
@@ -157,9 +162,9 @@ This is the diagram for the test setup:
 
           iptables -t nat -A PREROUTING -p tcp --dport 8000:9000 -i pnet0 -j DNAT --to-destination 10.255.255.10
 
-This command is going to match traffic arriving on pnet0 with a destination port between 8000 and 9000 and then change the destination IP address to 10.255.255.10 
+This command is going to match traffic arriving on pnet0 with a destination port between 8000 and 9000 and then change the destination IP address to 10.255.255.10 and keeping the original destination port 
 
-2. Configure the 2nd destination nat on the firewall (vsrx):
+2. Configure the 2nd destination nat on the Mgmt-Firewall (vSRX):
    
         set security nat destination pool mgmt-ip-1 address 10.255.254.11/32
         set security nat destination pool mgmt-ip-1 address port 22
@@ -180,7 +185,7 @@ Here you can see the mapping that the destination nat creates:
 10.255.255.10:8001 - > Translate to - > 10.255.254.11:22 
 10.255.255.10:8002 - > Translate to - > 10.255.254.12:22 
 
-Just like this you can create multiple other rule to map to other devices if needed 
+Just like this you can create multiple other rules to map to other devices if needed 
 
 You can refer to the following [link](https://www.juniper.net/documentation/us/en/software/junos/nat/topics/topic-map/security-nat-destination.html) for more details about destination nat for Juniper SRX devices
 
